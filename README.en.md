@@ -1,36 +1,30 @@
 # cachefs
 
-#### Description
-{**When you're done, you can delete the content in this README and update the file with details for others getting started with your repository**}
-
-#### Software Architecture
-Software architecture description
-
-#### Installation
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### Instructions
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### Contribution
-
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
 
 
-#### Gitee Feature
+Software translation generation
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+
+
+####Introduction
+
+>The http. Dir of go will make a system call every time it is read. Even if the file is not modified, this can be optimized.
+
+>This package provides HttpCacheFs. You can replace http. Dir (path) with cachefs. HttpCacheFs (path). The read file is not modified (currently judged by comparing the modification time), which can avoid system calls and improve performance.
+
+
+
+
+####Participation contribution
+
+
+
+1. Create an issue
+
+2. Fork warehouse
+
+3. Create a new Fork_ Xxx branch
+
+4. Submit code
+
+5. Create a new Pull Request

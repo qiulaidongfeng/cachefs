@@ -1,5 +1,7 @@
 # cachefs
 
+[English](./README.en.md)
+
 #### 介绍
 > go的http.Dir每次读取都会进行系统调用，即使文件没有修改，这可以优化。
 > 本包提供 HttpCacheFs ,可以将 http.Dir(path) 替换为 cachefs.HttpCacheFs(path) ,在被读取文件没有修改（当前通过比较修改时间判断），可以避免系统调用，提高性能。
