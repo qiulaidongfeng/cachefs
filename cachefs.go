@@ -10,33 +10,34 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
 // HttpCacheFs Http缓存文件系统
 type HttpCacheFs struct {
 	path string
-	fd   map[string]*CacheFs
+	fd   sync.Map //key=string value=*CacheFs
 }
 
 // NewHttpCacheFs 创建NewHttpCacheFs
 //   - path 是相对的路径 相当于 [http.Dir]
 func NewHttpCacheFs(path string) *HttpCacheFs {
-	return &HttpCacheFs{path: path, fd: make(map[string]*CacheFs)}
+	return &HttpCacheFs{path: path}
 }
 
 // Open 实现 [http.FileSystem] 接口
 func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 	fdname := filepath.Join(fs.path, name)
-	value, ok := fs.fd[fdname]
+	value, ok := fs.fd.Load(name)
 	if ok {
-		return value.Copy(), nil
+		return value.(*CacheFs).Copy(), nil
 	}
 	cache, err := NewCacheFs(fdname)
 	if err != nil {
 		return nil, err
 	}
-	fs.fd[fdname] = cache
+	fs.fd.Store(fdname, cache)
 	return cache.Copy(), nil
 }
 
@@ -90,7 +91,7 @@ func (fs *CacheFs) resetRead() error {
 		return err
 	}
 	fs.buf = NewBuf(file)
-	fs.fs.fd[fs.fd.Name()] = fs.Copy()
+	fs.fs.fd.Store(fs.fd.Name, fs.Copy())
 	return nil
 }
 
