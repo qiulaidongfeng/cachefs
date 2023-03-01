@@ -94,7 +94,7 @@ func (fs *CacheFs) resetRead() error {
 	return nil
 }
 
-// Read 实现io.Reader接口，如果没有修改，将返回缓存内容
+// Read 实现 [io.Reader] 接口，如果没有修改，将返回缓存内容
 func (fs *CacheFs) Read(p []byte) (n int, err error) {
 	fdinfo, err := fs.fd.Stat()
 	if err != nil {
@@ -112,7 +112,7 @@ func (fs *CacheFs) Read(p []byte) (n int, err error) {
 	return fs.Read(p)
 }
 
-// Seek 实现io.Seeker接口，如果没有修改，将移动缓存内容偏移量
+// Seek 实现 [io.Seeker] 接口，如果没有修改，将移动缓存内容偏移量
 func (fs *CacheFs) Seek(offset int64, whence int) (int64, error) {
 	fdinfo, err := fs.fd.Stat()
 	if err != nil {
@@ -137,7 +137,7 @@ func (fs *CacheFs) Readdir(count int) ([]fs.FileInfo, error) {
 }
 
 // Close 关闭
-// 为了能配合 [http.FileServer] ，永远返回nil
+// 为了能配合 [http.FileServer] ，永远返回nil，并且不关闭文件句柄
 func (fs *CacheFs) Close() error {
 	return nil
 }
