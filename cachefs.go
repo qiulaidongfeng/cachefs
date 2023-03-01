@@ -97,12 +97,11 @@ func (fs *CacheFs) resetRead() error {
 
 // Read 实现 [io.Reader] 接口，如果没有修改，将返回缓存内容
 func (fs *CacheFs) Read(p []byte) (n int, err error) {
-	fdinfo, err := fs.fd.Stat()
+	ok, err := fs.isNoRevise()
 	if err != nil {
 		return 0, err
 	}
-	nowtime := fdinfo.ModTime()    //获取文件现在修改时间
-	if fs.modtime.Equal(nowtime) { //通过比较缓存时修改时间，判断是否修改，没有直接从缓存读取
+	if ok { //通过比较缓存时修改时间，判断是否修改，没有直接从缓存读取
 		return fs.buf.Read(p)
 	}
 	//有修改，重现缓存再读
@@ -115,12 +114,11 @@ func (fs *CacheFs) Read(p []byte) (n int, err error) {
 
 // Seek 实现 [io.Seeker] 接口，如果没有修改，将移动缓存内容偏移量
 func (fs *CacheFs) Seek(offset int64, whence int) (int64, error) {
-	fdinfo, err := fs.fd.Stat()
+	ok, err := fs.isNoRevise()
 	if err != nil {
 		return 0, err
 	}
-	nowtime := fdinfo.ModTime()    //获取文件现在修改时间
-	if fs.modtime.Equal(nowtime) { //通过比较缓存时修改时间，判断是否修改，没有直接移动缓存内容偏移量
+	if ok { //通过比较缓存时修改时间，判断是否修改，没有直接移动缓存内容偏移量
 		return fs.buf.Seek(offset, whence)
 	}
 	//有修改，重现缓存再移动缓存内容偏移量
@@ -132,9 +130,27 @@ func (fs *CacheFs) Seek(offset int64, whence int) (int64, error) {
 }
 
 // Readdir 返回目录信息
-// 目前返回nil,nil
 func (fs *CacheFs) Readdir(count int) ([]fs.FileInfo, error) {
-	return nil, nil
+	ok, err := fs.isNoRevise()
+	if err != nil {
+		return nil, err
+	}
+	if ok { //如果文件没有修改
+		return fs.fd.Readdir(count)
+	}
+	//如果文件有修改
+	fs.resetRead()
+	return fs.Readdir(count)
+}
+
+// isNoRevise 返回系统文件是否没有修改
+func (fs *CacheFs) isNoRevise() (bool, error) {
+	fdinfo, err := fs.fd.Stat()
+	if err != nil {
+		return false, err
+	}
+	nowtime := fdinfo.ModTime()           //获取文件现在修改时间
+	return fs.modtime.Equal(nowtime), nil //通过比较缓存时修改时间，判断是否没有修改
 }
 
 // Close 关闭
@@ -145,7 +161,15 @@ func (fs *CacheFs) Close() error {
 
 // Stat 返回文件信息
 func (fs *CacheFs) Stat() (fs.FileInfo, error) {
-	return fs.fd.Stat()
+	ok, err := fs.isNoRevise()
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return fs.fd.Stat()
+	}
+	fs.resetRead()
+	return fs.Stat()
 }
 
 // Copy 对自身进行浅拷贝

@@ -16,17 +16,20 @@
 
 ##### CacheFs
 实现了[http.File](https://pkg.go.dev/net/http#File)接口
-内部用Buf保存文件数据
-当Read方法被调用时，先通过比较修改时间判断文件有没有修改
-- 如果没有修改，调用Buf的Read方法返回文件数据，避免(*os.File).Read
-- 如果有修改，重新读取文件数据，并更新HttpCacheFs的缓存
+内部用Buf保存文件数据,保留文件的（*os.File）句柄
+当Read或Seek方法被调用时，先通过比较修改时间判断文件有没有修改
+- 如果没有修改，调用Buf的Read或Seek方法，避免(*os.File).Read或（*os.File).Seek
+- 如果有修改，重新读取文件数据，并更新HttpCacheFs的缓存,再调用Read或Seek方法
 
 Close方法为了配合[http.FileServer](https://pkg.go.dev/net/http#FileServer)，永远返回nil,并且不关闭文件句柄
 
-Readdir方法目前返回nil,nil
+当Readdir或Stat方法被调用时，先通过比较修改时间判断文件有没有修改
+- 如果没有修改，调用os.File的Readdir或Stat
+- 如果有修改，重新读取文件数据，并更新HttpCacheFs的缓存,再调用Readdir或Stat方法
 
 ##### Buf
 实现了[io.Reader](https://pkg.go.dev/io#Reader)接口
+实现了[io.Seeker](https://pkg.go.dev/io#Seeker)接口
 Buf将[]byte封装成数据流，读取到末尾返回 [io.EOF](https://pkg.go.dev/io#EOF) 后下次读取会从头开始
 
 
