@@ -30,14 +30,14 @@ func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 	fdname := filepath.Join(fs.path, name)
 	value, ok := fs.fd[fdname]
 	if ok {
-		return value, nil
+		return value.Copy(), nil
 	}
 	cache, err := NewCacheFs(fdname)
 	if err != nil {
 		return nil, err
 	}
 	fs.fd[fdname] = cache
-	return cache, nil
+	return cache.Copy(), nil
 }
 
 // CacheFs 缓存文件系统
@@ -45,7 +45,7 @@ func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 type CacheFs struct {
 	fd      *os.File
 	modtime time.Time //缓存创建时修改时间
-	buf     *Buf
+	buf     Buf
 }
 
 // NewCacheFs 创建缓存文件系统
@@ -120,4 +120,11 @@ func (fs *CacheFs) Close() error {
 // Stat 返回文件信息
 func (fs *CacheFs) Stat() (fs.FileInfo, error) {
 	return fs.fd.Stat()
+}
+
+// Copy 对自身进行浅拷贝
+func (fs *CacheFs) Copy() *CacheFs {
+	ret := *fs
+	ret.buf = ret.buf.Copy()
+	return &ret
 }
