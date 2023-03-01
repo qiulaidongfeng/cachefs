@@ -43,6 +43,7 @@ func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 // CacheFs 缓存文件系统
 // 通过比较修改时间，在Open和Read时如果没有修改，不会进行系统调用，而是使用缓存
 type CacheFs struct {
+	fs      *HttpCacheFs
 	fd      *os.File
 	modtime time.Time //缓存创建时修改时间
 	buf     Buf
@@ -50,11 +51,7 @@ type CacheFs struct {
 
 // NewCacheFs 创建缓存文件系统
 func NewCacheFs(name string) (fs *CacheFs, err error) {
-	fd, err := os.Open(name) //打开
-	if err != nil {
-		return nil, err
-	}
-	fdinfo, err := fd.Stat()
+	fd, fdinfo, err := openAndStat(name)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +62,36 @@ func NewCacheFs(name string) (fs *CacheFs, err error) {
 	}
 	ret := &CacheFs{fd: fd, modtime: modtime, buf: NewBuf(file)} //创建缓存文件系统，文件全部内容被缓存
 	return ret, nil
+}
+
+// openAndStat 调用 [os.Open] 和 [os.File.Stat]
+func openAndStat(name string) (*os.File, fs.FileInfo, error) {
+	fd, err := os.Open(name) //打开
+	if err != nil {
+		return nil, nil, err
+	}
+	fdinfo, err := fd.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+	return fd, fdinfo, nil
+}
+
+// resetRead 重新读取
+func (fs *CacheFs) resetRead() error {
+	fd, fdinfo, err := openAndStat(fs.fd.Name())
+	if err != nil {
+		return err
+	}
+	fs.fd = fd
+	fs.modtime = fdinfo.ModTime()
+	file, err := io.ReadAll(fd) //读取全部内容
+	if err != nil {
+		return err
+	}
+	fs.buf = NewBuf(file)
+	fs.fs.fd[fs.fd.Name()] = fs.Copy()
+	return nil
 }
 
 // Read 实现io.Reader接口，如果没有修改，将返回缓存内容
@@ -78,11 +105,10 @@ func (fs *CacheFs) Read(p []byte) (n int, err error) {
 		return fs.buf.Read(p)
 	}
 	//有修改，重现缓存再读
-	nowfs, err := NewCacheFs(fs.fd.Name())
+	err = fs.resetRead()
 	if err != nil {
 		return 0, err
 	}
-	fs = nowfs
 	return fs.Read(p)
 }
 
@@ -97,11 +123,10 @@ func (fs *CacheFs) Seek(offset int64, whence int) (int64, error) {
 		return fs.buf.Seek(offset, whence)
 	}
 	//有修改，重现缓存再移动缓存内容偏移量
-	nowfs, err := NewCacheFs(fs.fd.Name())
+	err = fs.resetRead()
 	if err != nil {
 		return 0, err
 	}
-	fs = nowfs
 	return fs.Seek(offset, whence)
 }
 
