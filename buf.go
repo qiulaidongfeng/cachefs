@@ -8,7 +8,7 @@ var _ io.Reader = (*Buf)(nil)
 
 // Buf 循环缓存
 type Buf struct {
-	i   int
+	i   int //指示读取开始的下标
 	buf []byte
 }
 
@@ -20,11 +20,11 @@ func NewBuf(buf []byte) Buf {
 // Read 实现 [io.Reader] 接口,读取缓存内容
 // 读取到末尾返回 [io.EOF] 后下次读取会从头开始
 func (buf *Buf) Read(p []byte) (n int, err error) {
-	if buf.Empty() {
-		if len(p) == 0 {
+	if buf.Empty() { //如果没有可读的数据
+		if len(p) == 0 { //如果是空切片
 			return 0, nil
 		}
-		buf.i = 0
+		buf.i = 0 //将读取开始下标置0，下次读取就可以从头开始
 		return 0, io.EOF
 	}
 	n = copy(p, buf.buf[buf.i:])

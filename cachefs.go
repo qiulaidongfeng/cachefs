@@ -1,7 +1,7 @@
 // Package cachefs 实现了缓存文件系统
 //
 // 缓存文件系统用于在 [http.FileSystem] 默认实现需要优化
-// 通过比较修改时间，缓存文件系统在Open和Read时如果没有修改，不会进行系统调用，而是使用缓存
+// 通过比较修改时间，缓存文件系统在Open和Read时如果没有修改，减少系统调用（具体是避免os.Open,(*os.File).Read）
 package cachefs
 
 import (
@@ -30,7 +30,7 @@ func NewHttpCacheFs(path string) *HttpCacheFs {
 func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 	fdname := filepath.Join(fs.path, name)
 	value, ok := fs.fd.Load(name)
-	if ok {
+	if ok { //如果已被缓存
 		return value.(*CacheFs).Copy(), nil
 	}
 	cache, err := NewCacheFs(fdname)
@@ -42,7 +42,8 @@ func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 }
 
 // CacheFs 缓存文件系统
-// 通过比较修改时间，在Open和Read时如果没有修改，不会进行系统调用，而是使用缓存
+//
+// 通过比较修改时间，在Open和Read时如果没有修改，减少系统调用（具体是避免os.Open,(*os.File).Read）
 type CacheFs struct {
 	fs      *HttpCacheFs
 	fd      *os.File
@@ -104,7 +105,7 @@ func (fs *CacheFs) Read(p []byte) (n int, err error) {
 	if ok { //通过比较缓存时修改时间，判断是否修改，没有直接从缓存读取
 		return fs.buf.Read(p)
 	}
-	//有修改，重现缓存再读
+	//有修改，重新缓存再读
 	err = fs.resetRead()
 	if err != nil {
 		return 0, err
@@ -121,7 +122,7 @@ func (fs *CacheFs) Seek(offset int64, whence int) (int64, error) {
 	if ok { //通过比较缓存时修改时间，判断是否修改，没有直接移动缓存内容偏移量
 		return fs.buf.Seek(offset, whence)
 	}
-	//有修改，重现缓存再移动缓存内容偏移量
+	//有修改，重新缓存再移动缓存内容偏移量
 	err = fs.resetRead()
 	if err != nil {
 		return 0, err
@@ -154,18 +155,21 @@ func (fs *CacheFs) isNoRevise() (bool, error) {
 }
 
 // Close 关闭
+//
 // 为了能配合 [http.FileServer] ，永远返回nil，并且不关闭文件句柄
 func (fs *CacheFs) Close() error {
 	return nil
 }
 
 // Stat 返回文件信息
+//
+// 如果没有修改，避免 [os.Open] 系统调用
 func (fs *CacheFs) Stat() (fs.FileInfo, error) {
 	ok, err := fs.isNoRevise()
 	if err != nil {
 		return nil, err
 	}
-	if ok {
+	if ok { //通过比较缓存时修改时间，判断是否修改，没有直接从缓存读取
 		return fs.fd.Stat()
 	}
 	fs.resetRead()
