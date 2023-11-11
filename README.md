@@ -4,7 +4,7 @@
 
 #### 介绍
 > 通过go的http.FileServer（http.Dir(path)）可以很方便的创建文件服务器
-> go的http.Dir如果没有错误每次Open调用都会进行进行一次os.Open，os.Stat,至少一次的(*os.File).Read调用，这些最终会调用syscall包的函数进行系统调用，即使文件没有修改，这可以优化。
+> go的http.Dir如果没有错误每次Open调用都会进行一次os.Open调用，os.Stat调用,至少一次的(*os.File).Read调用，这些最终会调用syscall包的函数进行系统调用，即使文件没有修改，这可以优化。
 > 本包提供 HttpCacheFs ,可以将 http.Dir(path) 替换为 cachefs.HttpCacheFs(path) ,在被读取文件没有修改（当前通过比较修改时间判断），可以减少系统调用（具体是避免os.Open,(*os.File).Read），提高性能。
 
 #### 实现原理
@@ -18,7 +18,7 @@
 实现了[http.File](https://pkg.go.dev/net/http#File)接口
 内部用Buf保存文件数据,保留文件的（*os.File）句柄
 当Read或Seek方法被调用时，先通过比较修改时间判断文件有没有修改
-- 如果没有修改，调用Buf的Read或Seek方法，避免(*os.File).Read或（*os.File).Seek
+- 如果没有修改，调用Buf的Read或Seek方法，避免(*os.File).Read或(*os.File).Seek
 - 如果有修改，重新读取文件数据，并更新HttpCacheFs的缓存,再调用Read或Seek方法
 
 Close方法为了配合[http.FileServer](https://pkg.go.dev/net/http#FileServer)，永远返回nil,并且不关闭文件句柄
