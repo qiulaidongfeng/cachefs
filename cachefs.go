@@ -29,7 +29,7 @@ func NewHttpCacheFs(path string) *HttpCacheFs {
 // Open 实现 [http.FileSystem] 接口
 func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 	fdname := filepath.Join(fs.path, name)
-	value, ok := fs.fd.Load(name)
+	value, ok := fs.fd.Load(fdname)
 	if ok { //如果已被缓存
 		return value.(*CacheFs).Copy(), nil
 	}
@@ -92,7 +92,7 @@ func (fs *CacheFs) resetRead() error {
 		return err
 	}
 	fs.buf = NewBuf(file)
-	fs.fs.fd.Store(fs.fd.Name, fs.Copy())
+	fs.fs.fd.Store(fs.fd.Name(), fs.Copy())
 	return nil
 }
 
