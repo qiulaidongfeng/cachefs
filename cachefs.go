@@ -37,6 +37,7 @@ func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	cache.fs = fs
 	fs.fd.Store(fdname, cache)
 	return cache.Copy(), nil
 }
