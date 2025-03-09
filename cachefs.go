@@ -47,6 +47,7 @@ func (fs *HttpCacheFs) Open(name string) (http.File, error) {
 type CacheFs struct {
 	fs      *HttpCacheFs
 	fd      *os.File
+	fdinfo  os.FileInfo
 	modtime time.Time //缓存创建时修改时间
 	buf     Buf
 }
@@ -146,9 +147,15 @@ func (fs *CacheFs) Readdir(count int) ([]fs.FileInfo, error) {
 
 // isNoRevise 返回系统文件是否没有修改
 func (fs *CacheFs) isNoRevise() (bool, error) {
-	fdinfo, err := fs.fd.Stat()
-	if err != nil {
-		return false, err
+	var fdinfo os.FileInfo
+	if fs.fdinfo != nil {
+		fdinfo = fs.fdinfo
+	} else {
+		var err error
+		fdinfo, err = fs.fd.Stat()
+		if err != nil {
+			return false, err
+		}
 	}
 	nowtime := fdinfo.ModTime()           //获取文件现在修改时间
 	return fs.modtime.Equal(nowtime), nil //通过比较缓存时修改时间，判断是否没有修改
@@ -170,7 +177,8 @@ func (fs *CacheFs) Stat() (fs.FileInfo, error) {
 		return nil, err
 	}
 	if ok { //通过比较缓存时修改时间，判断是否修改，没有直接从缓存读取
-		return fs.fd.Stat()
+		fs.fdinfo, err = fs.fd.Stat()
+		return fs.fdinfo, err
 	}
 	fs.resetRead()
 	return fs.Stat()
